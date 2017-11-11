@@ -1,0 +1,127 @@
+%% This package is distributed under the terms of the GPLv3 or later, or the
+%% LPPL 1.3c or later, which ever license fits your needs the best.
+%%
+%% Copyright (C) 2017 by Jonathan P. Spratte
+\NeedsTeXFormat{LaTeX2e}
+\RequirePackage{xparse,l3keys2e}
+
+\def\jpswrapper@version{v0.1b}
+\def\jpswrapper@date{2017/11/11}
+
+\ProvidesExplPackage
+  {jpswrapper}           {\jpswrapper@date}
+  {\jpswrapper@version}  {wrapper macros and environments}
+
+\ExplSyntaxOn
+
+% boolean variables for modules >>>
+\bool_new:N \g_jpswrapper_module_wrapfig_bool
+%<<<
+
+\keys_define:nn { jpswrapper }{%>>>
+  wrapfig .bool_gset:N = \g_jpswrapper_module_wrapfig_bool,
+  all     .meta:n     = {
+    wrapfig = { #1 },
+  },
+}%<<<
+
+\ProcessKeysOptions { jpswrapper }
+
+% small helpers >>>
+\cs_new:Nn \jpswrapper_optional_processor:n {%>>>
+  \tl_if_empty:nTF { #1 }
+    { \def \ProcessedArgument {}     }
+    { \def \ProcessedArgument {[#1]} }
+}%<<<
+\NewDocumentCommand{\JPSWrapperOptions}{ o m }{%>>>
+  \IfNoValueTF { #1 }
+    { \keys_set:nn { jpswrapper } { #2 } }
+    { \keys_set:nn { jpswrapper / #1 } { #2 } }
+}%<<<
+%<<<
+
+% wrapfig module %>>>
+\bool_if:NT \g_jpswrapper_module_wrapfig_bool {
+  \RequirePackage{wrapfig,etoolbox,environ}
+  % variables for wrapfig wrapper >>>
+  \bool_new:N \l_jpswrapper_wrap_lines_used_bool
+  \tl_new:N \l_jpswrapper_wrap_type_tl
+  \tl_new:N \l_jpswrapper_wrap_lap_tl
+  \tl_new:N \l_jpswrapper_wrap_lines_tl
+  \tl_new:N \l_jpswrapper_wrap_udefault_tl
+  \dim_new:N \l_jpswrapper_wrap_pad_dim
+  \dim_new:N \l_jpswrapper_wrap_width_dim
+  %<<<
+  \keys_define:nn { jpswrapper/wrapfig }{%>>>
+    type     .tl_set:N  = \l_jpswrapper_wrap_type_tl,
+    type     .initial:n = { table },
+    lap      .tl_set:N  = \l_jpswrapper_wrap_lap_tl,
+    lap      .initial:n = {},
+    pad      .dim_set:N = \l_jpswrapper_wrap_pad_dim,
+    pad      .initial:n = { 0pt },
+    lines    .tl_set:N  = \l_jpswrapper_wrap_lines_tl,
+    lines    .initial:n = {},
+    width    .dim_set:N = \l_jpswrapper_wrap_width_dim,
+    width    .initial:n = { 0pt },
+    caption  .tl_set:N  = \l_jpswrapper_wrap_caption_tl,
+    caption  .initial:n = {},
+    cap      .meta:n    = { caption = { #1 } },
+    scaption .tl_set:N  = \l_jpswrapper_wrap_scaption_tl,
+    scaption .initial:n = {},
+    scap     .meta:n    = { scaption = { #1 } },
+  }%<<<
+  \NewDocumentCommand{\WrapWrapperUserDefaults}{ s m }{%>>>
+    \IfBooleanT{ #1 } { \tl_clear:N \l_wrap_udefault_tl }
+    \tl_put_right:Nn \l_wrap_udefault_tl {, #2}
+  }%<<<
+  \cs_new:Nn \jpswrapper_wrap_keys_set:nn {%>>>
+    \keys_set:nn { jpswrapper/wrapfig } { #1, #2 }
+  }%<<<
+  \AfterEndEnvironment{JPSwrapfloat}{\AfterJPSWrapfloat}
+  \NewEnviron{JPSwrapfloat}[2][]{%>>>
+    \bool_set_false:N \l_jpswrapper_wrap_lines_used_bool
+    \jpswrapper_wrap_keys_set:Vn \l_jpswrapper_wrap_udefault_tl { #1 }
+    \def \printcaption {}
+    \dim_compare:nNnTF { \l_jpswrapper_wrap_width_dim } = { 0pt }
+      { 
+        \exp_args:NNV \hbox_set:Nn \l_tmpa_box \BODY
+        \dim_set:Nn \l_tmpa_dim 
+          { \box_wd:N \l_tmpa_box + \l_jpswrapper_wrap_pad_dim }
+      }
+      { \dim_set:Nn \l_tmpa_dim { \l_jpswrapper_wrap_width_dim } }
+    \jpswrapper_wrap_environ:VVnVVVVV
+      \l_jpswrapper_wrap_type_tl
+      \l_jpswrapper_wrap_lines_tl
+      { #2 }
+      \l_jpswrapper_wrap_lap_tl
+      \l_tmpa_dim
+      \BODY
+      \l_jpswrapper_wrap_scaption_tl
+      \l_jpswrapper_wrap_caption_tl
+  }%<<<
+  \cs_new:Nn \jpswrapper_wrap_environ:nnnnnnnn {%>>>
+    \jpswrapper_wrap_environ_help
+      { #1 } { #2 } { #3 } { #4 } { #5 } { #6 } { #7 } { #8 }
+  }%<<<
+  \NewDocumentCommand{\jpswrapper_wrap_environ_help}{%>>>
+  m >{\jpswrapper_optional_processor:n}m m >{\jpswrapper_optional_processor:n}m
+  m m >{\jpswrapper_optional_processor:n}m m}{
+    \gdef\AfterJPSWrapfloat{
+      \begin{wrapfloat}{ #1 } #2 { #3 } #4 { #5 }
+        \def\printcaption{
+          \tl_if_empty:nF { #8 } { \caption #7 { #8 } }
+        }
+        #6
+      \end{wrapfloat}
+    }
+  }%<<<
+  % generate variants >>>
+  \cs_generate_variant:Nn \jpswrapper_wrap_keys_set:nn {Vn}
+  \cs_generate_variant:Nn \jpswrapper_wrap_environ:nnnnnnnn { VVnVVVVV }
+  %<<<
+}%<<<
+
+\ExplSyntaxOff
+
+\endinput
+% vim: fdm=marker foldmarker=>>>,<<<
