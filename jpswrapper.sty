@@ -5,8 +5,8 @@
 \NeedsTeXFormat{LaTeX2e}
 \RequirePackage{xparse,l3keys2e}
 
-\def\jpswrapper@version{v0.1b}
-\def\jpswrapper@date{2018/01/17}
+\def\jpswrapper@version{v0.1c}
+\def\jpswrapper@date{2018/01/20}
 
 \ProvidesExplPackage
   {jpswrapper}           {\jpswrapper@date}
@@ -16,6 +16,10 @@
 
 % boolean variables for modules >>>
 \bool_new:N \g_jpswrapper_module_wrapfig_bool
+%<<<
+% shared variables >>>
+\dim_new:N \g_jpswrapper_tmp_dim
+\box_new:N \l_jpswrapper_tmp_box
 %<<<
 
 \keys_define:nn { jpswrapper }{%>>>
@@ -51,6 +55,7 @@
   % variables for wrapfig wrapper >>>
   \bool_new:N \l_jpswrapper_wrap_lines_used_bool
   \bool_new:N \l_jpswrapper_wrap_alternating_bool
+  \bool_new:N \l_jpswrapper_wrap_check_width_bool
   \tl_new:N \l_jpswrapper_wrap_type_tl
   \tl_new:N \l_jpswrapper_wrap_hang_tl
   \tl_new:N \l_jpswrapper_wrap_lines_tl
@@ -58,16 +63,15 @@
   \tl_new:N \g_jpswrapper_wrap_side_tl
   \tl_new:N \g_jpswrapper_wrap_next_side_tl
   \dim_new:N \l_jpswrapper_wrap_width_dim
-  \dim_new:N \l_jpswrapper_wrap_tmp_dim
   % constants for wrapfig comparison of positioning >>>
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_L_tl { L }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_l_tl { l }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_R_tl { R }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_r_tl { r }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_O_tl { O }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_o_tl { o }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_I_tl { I }
-  \tl_set:Nn \l_jpswrapper_wrap_cmp_i_tl { i }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_L_tl { L }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_l_tl { l }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_R_tl { R }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_r_tl { r }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_O_tl { O }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_o_tl { o }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_I_tl { I }
+  \tl_const:Nn \l_jpswrapper_wrap_cmp_i_tl { i }
   %<<<
   %<<<
   \keys_define:nn { jpswrapper/wrapfig_module }{%>>>
@@ -86,6 +90,10 @@
     lines    .initial:n = {},
     width    .dim_set:N = \l_jpswrapper_wrap_width_dim,
     width    .initial:n = { 0pt },
+    *        .code:n    = {
+      \bool_set_true:N \l_jpswrapper_wrap_check_width_bool
+    },
+    *.value_forbidden:n = true,
     L        .code:n    = { \jpswrapper_wrap_set_side:n { L } },
     L.value_forbidden:n = true,
     l        .code:n    = { \jpswrapper_wrap_set_side:n { l } },
@@ -114,6 +122,16 @@
   \NewEnviron{JPSwrapfloat}[1][]{%>>>
     \bool_set_false:N \l_jpswrapper_wrap_lines_used_bool
     \jpswrapper_wrap_keys_set:Vn \l_jpswrapper_wrap_udefault_tl { #1 }
+    \bool_if:NT \l_jpswrapper_wrap_check_width_bool {
+      \dim_compare:nNnT { \l_jpswrapper_wrap_width_dim } = { 0pt } {
+        \group_begin:
+        \JPSwrapfigRedefineCaption
+        \hbox_set:Nn \l_jpswrapper_tmp_box { \BODY\unskip }
+        \dim_gset:Nn \g_jpswrapper_tmp_dim { \box_wd:N \l_jpswrapper_tmp_box }
+        \group_end:
+        \dim_set_eq:NN \l_jpswrapper_wrap_width_dim \g_jpswrapper_tmp_dim
+      }
+    }
     \jpswrapper_wrap_environ:VVVVVV
       \l_jpswrapper_wrap_type_tl
       \l_jpswrapper_wrap_lines_tl
@@ -132,6 +150,10 @@
       \end{wrapfloat}
     }
   }%<<<
+\newcommand*\JPSwrapfigRedefineCaption{%>>>
+  \renewcommand\caption[2][]{\unskip}
+  \cs_if_exist:NT \captionof { \renewcommand\captionof[1]{\caption} }
+}%<<<
   \cs_new:Nn \jpswrapper_wrap_set_side:n {%>>>
     \tl_gset:Nn \g_jpswrapper_wrap_side_tl { #1 }
     \bool_if:NTF \l_jpswrapper_wrap_alternating_bool

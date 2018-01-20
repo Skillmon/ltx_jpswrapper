@@ -30,7 +30,8 @@
 \newenvironment{codedescription*}{%
   \parindent=-3em
   \parskip=1em plus 2pt minus 2pt
-  \vspace*{-0.7em}\hspace*{\parindent}\ignorespaces
+  \vskip-\lastskip
+  \hspace*{\parindent}\ignorespaces
 }{\par}
 \newcommand*\dependencies[2][3]{%
   \@ifstar
@@ -49,7 +50,7 @@
 \title{The \texttt{jpswrapper} package}
 \author{Jonathan P. Spratte}
 \makeatletter
-\date{\jpswrapper@version\ \jpswrapper@date}
+\date{\jpswrapper@version\ \ \jpswrapper@date}
 \makeatother
 
 \begin{document}
@@ -58,9 +59,13 @@
 \section{Macros}
 The package provides a central macro to switch some options of the modules:
 \begin{codedescription}
-\texttt{\string\JPSWrapperOptions[<module>]{<options>}}\\
+\texttt{\string\JPSWrapperOptions[\textit{module}]\{\textit{options}\}}\\
   The options for each module can't be used as options to \verb|\usepackage| as
-  they are available only after the package was loaded.
+  they are available only after the package was loaded. This command can be used
+  to specify options to the package without the optional argument, or for a
+  single module with the optional argument. Alternatively you could specify
+  module options with
+  \texttt{\string\JPSWrapperOptions\{\textit{module}\_module/\textit{option}\}}.
 \end{codedescription}
 
 \section{Modules}
@@ -84,14 +89,16 @@ specifies whether to load that module or not. If thoseAdditional options are:
 
 \subsection{\texttt{wrapfig}}
 This module creates a wrapper around the \texttt{wrapfloat} environment of the
-\texttt{wrapfig} package.
+\texttt{wrapfig} package. It doesn't change anything inside \texttt{wrapfig}'s
+code so the stuff contained in this module and the package it should wrap can
+coexist.
 
 \subsubsection{Environments}
 The module provides a new environment which is meant to give an easier and
 clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
 
 \begin{codedescription}
-\texttt{\string\begin\{JPSwrapfloat\}[<options>]}\\
+\texttt{\string\begin\{JPSwrapfloat\}[\textit{options}]}\\
   Sets a \texttt{wrapfloat} environment. It doesn't require any more options and
   has no mandatory arguments. The following options are available for this
   environment:
@@ -110,10 +117,22 @@ clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
     \item[width=\textit{dim}]\mbox{}\\
       the width, if you want to specify it. Default is \texttt{0pt} which
       results in \texttt{wrapfloat} calculating it.
-    \item[\textit{<placement>}]\mbox{}\\
+    \item[\textit{placement}]\mbox{}\\
       the placement. Accepted are the same as for \texttt{wrapfig} (\texttt{R},
       \texttt{r}, \texttt{L}, \texttt{l}, \texttt{O}, \texttt{o}, \texttt{I},
       \texttt{i})
+    \item[*]\mbox{}\\
+      tries to implement another automatic determination of the width. This
+      \emph{might} work better than \texttt{wrapfig}'s method, but is based on
+      the same idea. We redefine the caption command to do nothing during the
+      width determination and hope nothing else is contained inside the
+      environment which isn't allowed to be placed inside a \verb|\hbox|. With
+      this wrapper, the redefinition is done with the macro
+      \verb|\JPSwrapfigRedefineCaption|. It is applied only when the option
+      \texttt{width=0pt} is used (or not used if you didn't change anything on
+      the default \texttt{width}) . The test is done inside a group, you still
+      have to watch out if you use anything changing a counter or the like
+      globally.
   \end{options}
 \end{codedescription}
 
@@ -122,64 +141,35 @@ clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
 \texttt{alternate=\optionTF}\\
   If this option is set, the corresponding opposite of the placement is used for
   the next placement (e.\,g., if you use \texttt{r} next time \texttt{l} is
-  used). It gets overridden by options given directly to \texttt{JPSwrapfloat}
-  and by those used as user defaults (with \verb|\JPSwrapfloatUserDefaults|). If
-  it is set to unset, the same placement is used again.
+  used). The resulting placement gets overridden by options given directly to
+  \texttt{JPSwrapfloat} and by those used as user defaults (with
+  \verb|\JPSwrapfloatUserDefaults|). If it isn't set, the same placement is used
+  again.
 \end{codedescription*}
 
 \subsubsection{Additional Commands}
 \begin{codedescription*}
-\texttt{\string\JPSwrapfloatUserDefaults\textit{*}\{<options>\}}\\
+\texttt{\string\JPSwrapfloatUserDefaults\textit{*}\{\textit{options}\}}\\
   Sets up a list of options which is processed prior to the options you provide
-  to the \texttt{JPSwrapfloat} environment.
+  to the \texttt{JPSwrapfloat} environment. If the optional star is given, the
+  list is cleared prior to adding the specified \texttt{\textit{options}}.
+
+\verb|\JPSwrapfigRedefineCaption|\\
+  This is the macro which redefines \verb|\caption| (and if defined
+  \verb|\captionof|) for the automatic width description if a \texttt{*} was one
+  of the options given to \texttt{JPSwrapfloat}. Change this if you use anything
+  which makes \verb|\caption| accept more than just one optional and one
+  mandatory argument. You might also including other stuff you have to switch
+  off during width determination.
 \end{codedescription*}
 
 \dependencies{environ,etoolbox,wrapfig}
 
-\begin{JPSwrapfloat}[lines=6,r]
-  %\vspace*{-15mm}%
-  \centering
-  \begin{tabular}{r@{\,-\,}ll}
-      \toprule
-      \multicolumn{2}{c}{Investitionen} & Preisniveau\\
-      \midrule
-      0 & 100 & Preis x2\\
-      101 & 1000 & Preis x1,5\\
-      1001 & 10000 & Preis x1,2\\
-      10001 & $\infty$ & Preis x0,7\\
-      \bottomrule
-  \end{tabular}
-  \caption[foo]{O'aka Investitionen zu bezahlen}
-\end{JPSwrapfloat}
 \section{Dependencies}
 The package requires the packages \texttt{xparse} and \texttt{l3keys2e}.
 
 \section{License}
 This package is distributed under the terms of the GPLv3 or later, or the
 LPPL~1.3c or later, which ever license fits your needs the best.
-
-\ExplSyntaxOn
-\tl_use:N \g_jpswrapper_wrap_next_side_tl
-\ExplSyntaxOff
-\section{foo}
-%\begin{wrapfloat}{table}{r}{0pt}
-\begin{JPSwrapfloat}
-  %\vspace*{-15mm}%
-  \centering
-  \begin{tabular}{r@{\,-\,}ll}
-      \toprule
-      \multicolumn{2}{c}{Investituciones} & Preisniveau\\
-      \midrule
-      0 & 100 & Preis x2\\
-      101 & 1000 & Preis x1,5\\
-      1001 & 10000 & Preis x1,2\\
-      10001 & $\infty$ & Preis x0,7\\
-      \bottomrule
-  \end{tabular}
-  \caption[foo]{O'aka Investitionen zu bezahlen}
-\end{JPSwrapfloat}
-%\end{wrapfloat}
-
-\blindtext
 
 \end{document}
