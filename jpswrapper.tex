@@ -1,7 +1,7 @@
 %% This package is distributed under the terms of the GPLv3 or later, or the
 %% LPPL 1.3c or later, which ever license fits your needs the best.
 %%
-%% Copyright (C) 2017-2018 by Jonathan P. Spratte
+%% Copyright (C) 2017-2019 by Jonathan P. Spratte
 \documentclass[a4paper,10pt]{scrartcl}
 
 \usepackage[utf8]{inputenc}
@@ -76,7 +76,8 @@ load one module the corresponding package gets loaded by
 additional packages as dependencies.
 
 For each module there is a corresponding boolean option to this package which
-specifies whether to load that module or not. If thoseAdditional options are:
+specifies whether to load that module or not. They have to be loaded during
+package load time. Additional options are:
 \begin{codedescription}
 \texttt{all=\optionTF}\\
   if set \texttt{true} every module gets loaded (might be overridden by
@@ -94,8 +95,9 @@ code so the stuff contained in this module and the package it should wrap can
 coexist.
 
 \subsubsection{Environments}
-The module provides a new environment which is meant to give an easier and
-clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
+The module provides new environments which are meant to give an easier and
+clearer interface to \texttt{wrapfig}'s environments \texttt{wrapfloat},
+\texttt{wrapfig}, and \texttt{wraptable}.
 
 \begin{codedescription}
 \texttt{\string\begin\{JPSwrapfloat\}[\textit{options}]}\\
@@ -104,14 +106,21 @@ clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
   environment:
   \begin{options}
     \item[type=\textit{type}]\mbox{}\\
-      the type of float (\texttt{table} or \texttt{figure}). Default is
-      \texttt{table}
+      the type of float (\texttt{table} or \texttt{figure}). If no \texttt{type}
+      is specified, it is tried to guess the type based on the contents. By
+      default if there is a \verb|\begin{tabular}|, \verb|\begin{tabularx}|, or
+      \verb|\begin{tabulary}| contained, the \texttt{type} is guessed to be
+      \texttt{table}, else \texttt{figure} is used. See the module option
+      \texttt{table-guess} on how to change the keywords for which
+      \texttt{table} is used.
     \item[table]\mbox{}\\
       same as \texttt{type=table}
     \item[fig\textit{ure}]\mbox{}\\
       same as \texttt{type=figure}. \texttt{fig} is a short form
     \item[hang=\textit{dim}]\mbox{}\\
-      the overhang into the margin
+      the overhang into the margin. You can use any token here (allowing you to
+      use \verb|\width| like in \texttt{wrapfig}) but the underlying
+      \texttt{wrapfloat} environment has to understand it.
     \item[lines=\textit{num}]\mbox{}\\
       number of lines if you want to specify them
     \item[width=\textit{dim}]\mbox{}\\
@@ -121,6 +130,11 @@ clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
       the placement. Accepted are the same as for \texttt{wrapfig} (\texttt{R},
       \texttt{r}, \texttt{L}, \texttt{l}, \texttt{O}, \texttt{o}, \texttt{I},
       \texttt{i})
+    \item[place=\textit{placement}]\mbox{}\\
+      If you somehow added a \texttt{\textit{placement}} to \texttt{wrapfig} you
+      can use this key. Any of the default placements will work here, too.
+      However this \texttt{\textit{placement}} has no effect on the placement
+      set for the next environment.
     \item[*]\mbox{}\\
       tries to implement another automatic determination of the width. This
       \emph{might} work better than \texttt{wrapfig}'s method, but is based on
@@ -130,10 +144,16 @@ clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
       this wrapper, the redefinition is done with the macro
       \verb|\JPSwrapfigRedefineCaption|. It is applied only when the option
       \texttt{width=0pt} is used (or not used if you didn't change anything on
-      the default \texttt{width}) . The test is done inside a group, you still
+      the default \texttt{width}). The test is done inside a group, you still
       have to watch out if you use anything changing a counter or the like
       globally.
   \end{options}
+
+\texttt{\string\begin\{JPSwrapfig\}[\textit{options}]}\\
+  Same as \texttt{JPSwrapfloat} but sets \texttt{type=figure}.
+
+\texttt{\string\begin\{JPSwraptable\}[\textit{options}]}\\
+  Same as \texttt{JPSwrapfloat} but sets \texttt{type=table}.
 \end{codedescription}
 
 \subsubsection{Module Options}
@@ -141,26 +161,49 @@ clearer interface to \texttt{wrapfig}'s environment \texttt{wrapfloat}.
 \texttt{alternate=\optionTF}\\
   If this option is set, the corresponding opposite of the placement is used for
   the next placement (e.\,g., if you use \texttt{r} next time \texttt{l} is
-  used). The resulting placement gets overridden by options given directly to
-  \texttt{JPSwrapfloat} and by those used as user defaults (with
-  \verb|\JPSwrapfloatUserDefaults|). If it isn't set, the same placement is used
-  again.
+  used, \texttt{R} becomes \texttt{L}). The resulting placement gets overridden
+  by options given directly to \texttt{JPSwrapfloat} and by those used as user
+  defaults (with \verb|\JPSwrapfloatUserDefaults|). If it isn't set, the same
+  placement is used again.
+
+\texttt{table-guess=\textit{clist}}\\
+  This is a comma seperated list containing the tokens for which
+  \texttt{type=table} is guessed, if no \texttt{type} is specified. The default
+  definition is\\
+  \verb|table-guess={\begin{tabular},\begin{tabularx},\begin{tabulary}}|.
 \end{codedescription*}
 
 \subsubsection{Additional Commands}
 \begin{codedescription*}
 \texttt{\string\JPSwrapfloatUserDefaults\textit{*}\{\textit{options}\}}\\
   Sets up a list of options which is processed prior to the options you provide
-  to the \texttt{JPSwrapfloat} environment. If the optional star is given, the
-  list is cleared prior to adding the specified \texttt{\textit{options}}.
+  to the \texttt{JPSwrapfloat}-like environment. If the optional star is given,
+  the list is cleared prior to adding the specified \texttt{\textit{options}}.
+  You could as well change the default values with
+  \texttt{\string\JPSWrapperOptions[wrapfig]\{\textit{options}\}}.
 
+\begin{JPSwrapfloat}[r,*]
+  \vspace*{-5mm}%
+  \centering
+  \caption{O'aka Investitionen\label{tab:oaka}}%
+  \begin{tabular}{r@{\,-\,}ll}
+    \hline
+    \multicolumn{2}{c}{Investitionen} & Preisniveau\\
+    \hline
+    0 & 100 & Preis x2\\
+    101 & 1000 & Preis x1,5\\
+    1001 & 10000 & Preis x1,2\\
+    10001 & $\infty$ & Preis x0,7\\
+    \hline
+  \end{tabular}
+\end{JPSwrapfloat}
 \verb|\JPSwrapfigRedefineCaption|\\
   This is the macro which redefines \verb|\caption| (and if defined
   \verb|\captionof|) for the automatic width description if a \texttt{*} was one
   of the options given to \texttt{JPSwrapfloat}. Change this if you use anything
   which makes \verb|\caption| accept more than just one optional and one
-  mandatory argument. You might also including other stuff you have to switch
-  off during width determination.
+  mandatory argument. You might also include other stuff you have to switch off
+  during width determination.
 \end{codedescription*}
 
 \dependencies{environ,etoolbox,wrapfig}
@@ -171,5 +214,9 @@ The package requires the packages \texttt{xparse} and \texttt{l3keys2e}.
 \section{License}
 This package is distributed under the terms of the GPLv3 or later, or the
 LPPL~1.3c or later, which ever license fits your needs the best.
+
+\section{Bugs}
+This is hosted on github. If you encounter any bugs, report them there:
+\url{https://github.com/Skillmon/ltx_jpswrapper/issues}
 
 \end{document}

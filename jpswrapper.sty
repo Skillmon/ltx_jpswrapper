@@ -1,12 +1,12 @@
 %% This package is distributed under the terms of the GPLv3 or later, or the
 %% LPPL 1.3c or later, which ever license fits your needs the best.
 %%
-%% Copyright (C) 2017-2018 by Jonathan P. Spratte
+%% Copyright (C) 2017-2019 by Jonathan P. Spratte
 \NeedsTeXFormat{LaTeX2e}
 \RequirePackage{xparse,l3keys2e}
 
-\def\jpswrapper@version{v0.1c}
-\def\jpswrapper@date{2018/01/20}
+\def\jpswrapper@version{v0.1d}
+\def\jpswrapper@date{2019/02/03}
 
 \ProvidesExplPackage
   {jpswrapper}           {\jpswrapper@date}
@@ -32,12 +32,13 @@
   except  .code:n      = { \clist_map_inline:nn {#1}
     { \bool_gset_false:c { g_jpswrapper_module_#1_bool } }
   },
+  except  .value_required:n = true,
 }%<<<
 
 \ProcessKeysOptions { jpswrapper }
 
 % small helpers >>>
-\cs_new:Nn \jpswrapper_m_optional_processor:n {%>>>
+\cs_new:Npn \jpswrapper_m_optional_processor:n #1 {%>>>
   \tl_if_empty:nTF { #1 }
     { \def \ProcessedArgument {}     }
     { \def \ProcessedArgument {[#1]} }
@@ -53,7 +54,6 @@
 \bool_if:NT \g_jpswrapper_module_wrapfig_bool {
   \RequirePackage{wrapfig,etoolbox,environ}
   % variables for wrapfig wrapper >>>
-  \bool_new:N \l_jpswrapper_wrap_lines_used_bool
   \bool_new:N \l_jpswrapper_wrap_alternating_bool
   \bool_new:N \l_jpswrapper_wrap_check_width_bool
   \tl_new:N \l_jpswrapper_wrap_type_tl
@@ -63,6 +63,7 @@
   \tl_new:N \g_jpswrapper_wrap_side_tl
   \tl_new:N \g_jpswrapper_wrap_next_side_tl
   \dim_new:N \l_jpswrapper_wrap_width_dim
+  \clist_new:N \l_jpswrapper_wrap_guess_table_clist
   % constants for wrapfig comparison of positioning >>>
   \tl_const:Nn \l_jpswrapper_wrap_cmp_L_tl { L }
   \tl_const:Nn \l_jpswrapper_wrap_cmp_l_tl { l }
@@ -75,52 +76,77 @@
   %<<<
   %<<<
   \keys_define:nn { jpswrapper/wrapfig_module }{%>>>
-    alternate.bool_set:N = \l_jpswrapper_wrap_alternating_bool,
-    alternate.default:n = { true },
-    type     .tl_set:N  = \l_jpswrapper_wrap_type_tl,
-    type     .initial:n = { table },
-    table    .meta:n    = { type = { table }, },
+    alternate.bool_set:N    = \l_jpswrapper_wrap_alternating_bool,
+    alternate.default:n     = { true },
+    table-guess.clist_set:N = \l_jpswrapper_wrap_guess_table_clist,
+    table-guess.initial:n   = {
+      \begin{tabular}, \begin{tabularx}, \begin{tabulary}
+    },
+    type     .tl_set:N      = \l_jpswrapper_wrap_type_tl,
+    type     .initial:n     = {},
+    table    .meta:n        = { type = { table }, },
     table    .value_forbidden:n = true,
-    figure   .meta:n    = { type = { figure }, },
+    figure   .meta:n        = { type = { figure }, },
     figure   .value_forbidden:n = true,
-    fig      .meta:n    = { figure },
-    hang     .tl_set:N  = \l_jpswrapper_wrap_hang_tl,
-    hang     .initial:n = {},
-    lines    .tl_set:N  = \l_jpswrapper_wrap_lines_tl,
-    lines    .initial:n = {},
-    width    .dim_set:N = \l_jpswrapper_wrap_width_dim,
-    width    .initial:n = { 0pt },
-    *        .code:n    = {
+    fig      .meta:n        = { figure },
+    hang     .tl_set:N      = \l_jpswrapper_wrap_hang_tl,
+    hang     .initial:n     = {},
+    lines    .tl_set:N      = \l_jpswrapper_wrap_lines_tl,
+    lines    .initial:n     = {},
+    width    .dim_set:N     = \l_jpswrapper_wrap_width_dim,
+    width    .initial:n     = { 0pt },
+    *        .code:n        = {
       \bool_set_true:N \l_jpswrapper_wrap_check_width_bool
     },
-    *.value_forbidden:n = true,
-    L        .code:n    = { \jpswrapper_wrap_set_side:n { L } },
-    L.value_forbidden:n = true,
-    l        .code:n    = { \jpswrapper_wrap_set_side:n { l } },
-    l.value_forbidden:n = true,
-    R        .code:n    = { \jpswrapper_wrap_set_side:n { R } },
-    R.value_forbidden:n = true,
-    r        .code:n    = { \jpswrapper_wrap_set_side:n { r } },
-    r.value_forbidden:n = true,
-    I        .code:n    = { \jpswrapper_wrap_set_side:n { I } },
-    I.value_forbidden:n = true,
-    i        .code:n    = { \jpswrapper_wrap_set_side:n { i } },
-    i.value_forbidden:n = true,
-    O        .code:n    = { \jpswrapper_wrap_set_side:n { O } },
-    O.value_forbidden:n = true,
-    o        .code:n    = { \jpswrapper_wrap_set_side:n { o } },
-    o.value_forbidden:n = true,
+    *.value_forbidden:n     = true,
+    place    .tl_gset:N     = \g_jpswrapper_wrap_side_tl,
+    place.value_required:n  = true,
+    L        .code:n        = { \jpswrapper_wrap_set_side:n { L } },
+    L.value_forbidden:n     = true,
+    l        .code:n        = { \jpswrapper_wrap_set_side:n { l } },
+    l.value_forbidden:n     = true,
+    R        .code:n        = { \jpswrapper_wrap_set_side:n { R } },
+    R.value_forbidden:n     = true,
+    r        .code:n        = { \jpswrapper_wrap_set_side:n { r } },
+    r.value_forbidden:n     = true,
+    I        .code:n        = { \jpswrapper_wrap_set_side:n { I } },
+    I.value_forbidden:n     = true,
+    i        .code:n        = { \jpswrapper_wrap_set_side:n { i } },
+    i.value_forbidden:n     = true,
+    O        .code:n        = { \jpswrapper_wrap_set_side:n { O } },
+    O.value_forbidden:n     = true,
+    o        .code:n        = { \jpswrapper_wrap_set_side:n { o } },
+    o.value_forbidden:n     = true,
   }%<<<
   \NewDocumentCommand{\JPSwrapfloatUserDefaults}{ s m }{%>>>
-    \IfBooleanT{ #1 } { \tl_clear:N \l_wrap_udefault_tl }
-    \tl_put_right:Nn \l_wrap_udefault_tl {, #2}
+    \IfBooleanT{ #1 } { \tl_clear:N \l_jpswrapper_wrap_udefault_tl }
+    \tl_put_right:Nn \l_jpswrapper_wrap_udefault_tl {, #2}
   }%<<<
-  \cs_new:Nn \jpswrapper_wrap_keys_set:nn {%>>>
+  \cs_new:Npn \jpswrapper_wrap_keys_set:nn #1 #2 {%>>>
     \keys_set:nn { jpswrapper/wrapfig_module } { #1, #2 }
   }%<<<
   \AfterEndEnvironment{JPSwrapfloat}{\AfterJPSWrapfloat}
+  \AfterEndEnvironment{JPSwrapfig}{\AfterJPSWrapfloat}
+  \AfterEndEnvironment{JPSwraptable}{\AfterJPSWrapfloat}
+  \NewEnviron{JPSwrapfig}[1][]{%>>>
+    \jpswrapper_wrap_eval_options:n { figure,#1 }
+  }%<<<
+  \NewEnviron{JPSwraptable}[1][]{%>>>
+    \jpswrapper_wrap_eval_options:n { table,#1 }
+  }%<<<
   \NewEnviron{JPSwrapfloat}[1][]{%>>>
-    \bool_set_false:N \l_jpswrapper_wrap_lines_used_bool
+    \jpswrapper_wrap_eval_options:n { #1 }
+  }%<<<
+  \NewDocumentCommand{\jpswrapper_wrap_set:nnnnnn}{%>>>
+  m >{\jpswrapper_m_optional_processor:n}m m 
+  >{\jpswrapper_m_optional_processor:n}m m +m}{
+    \gdef\AfterJPSWrapfloat{
+      \begin{wrapfloat}{ #1 } #2 { #3 } #4 { #5 }
+        #6
+      \end{wrapfloat}
+    }
+  }%<<<
+  \cs_new:Npn \jpswrapper_wrap_eval_options:n #1 {%>>>
     \jpswrapper_wrap_keys_set:Vn \l_jpswrapper_wrap_udefault_tl { #1 }
     \bool_if:NT \l_jpswrapper_wrap_check_width_bool {
       \dim_compare:nNnT { \l_jpswrapper_wrap_width_dim } = { 0pt } {
@@ -132,7 +158,10 @@
         \dim_set_eq:NN \l_jpswrapper_wrap_width_dim \g_jpswrapper_tmp_dim
       }
     }
-    \jpswrapper_wrap_environ:VVVVVV
+    \tl_if_empty:NT \l_jpswrapper_wrap_type_tl {% guess the type >>>
+      \jpswrapper_wrap_guess_type:V \BODY
+    }%<<<
+    \jpswrapper_wrap_set:VVVVVV
       \l_jpswrapper_wrap_type_tl
       \l_jpswrapper_wrap_lines_tl
       \g_jpswrapper_wrap_side_tl
@@ -141,20 +170,25 @@
       \BODY
     \tl_gset_eq:NN \g_jpswrapper_wrap_side_tl \g_jpswrapper_wrap_next_side_tl
   }%<<<
-  \NewDocumentCommand{\jpswrapper_wrap_environ:nnnnnn}{%>>>
-  m >{\jpswrapper_m_optional_processor:n}m m 
-  >{\jpswrapper_m_optional_processor:n}m m +m}{
-    \gdef\AfterJPSWrapfloat{
-      \begin{wrapfloat}{ #1 } #2 { #3 } #4 { #5 }
-        #6
-      \end{wrapfloat}
+  \cs_new:Npn \jpswrapper_wrap_guess_type:n #1 {%>>>
+    \clist_map_inline:Nn \l_jpswrapper_wrap_guess_table_clist {
+      \tl_if_in:nnT { #1 } { ##1 }
+        { \tl_set:Nn \l_jpswrapper_wrap_type_tl { table } }
     }
+    \tl_if_empty:NT \l_jpswrapper_wrap_type_tl
+      { \tl_set:Nn \l_jpswrapper_wrap_type_tl { figure } }
   }%<<<
-\newcommand*\JPSwrapfigRedefineCaption{%>>>
-  \renewcommand\caption[2][]{\unskip}
-  \cs_if_exist:NT \captionof { \renewcommand\captionof[1]{\caption} }
-}%<<<
-  \cs_new:Nn \jpswrapper_wrap_set_side:n {%>>>
+  \newcommand*\JPSwrapfigRedefineCaption{%>>>
+    \renewcommand\caption[2][]{\unskip\ignorespaces}
+    \let\label\@gobble
+    \let\captionabove\relax
+    \cs_if_exist:NT \captionabove { \renewcommand\captionabove{\caption} }
+    \cs_if_exist:NT \captionbelow { \renewcommand\captionbelow{\caption} }
+    \cs_if_exist:NT \captionof { \renewcommand\captionof[1]{\caption} }
+    \cs_if_exist:NT \captionaboveof { \renewcommand\captionaboveof[1]{\caption} }
+    \cs_if_exist:NT \captionbelowof { \renewcommand\captionbelowof[1]{\caption} }
+  }%<<<
+  \cs_new:Npn \jpswrapper_wrap_set_side:n #1 {%>>>
     \tl_gset:Nn \g_jpswrapper_wrap_side_tl { #1 }
     \bool_if:NTF \l_jpswrapper_wrap_alternating_bool
       {
@@ -177,8 +211,9 @@
       { \tl_gset:Nn \g_jpswrapper_wrap_next_side_tl { #1 } }
   }%<<<
   % generate variants >>>
-  \cs_generate_variant:Nn \jpswrapper_wrap_keys_set:nn {Vn}
-  \cs_generate_variant:Nn \jpswrapper_wrap_environ:nnnnnn { VVVVVV }
+  \cs_generate_variant:Nn \jpswrapper_wrap_guess_type:n { V }
+  \cs_generate_variant:Nn \jpswrapper_wrap_keys_set:nn { Vn }
+  \cs_generate_variant:Nn \jpswrapper_wrap_set:nnnnnn { VVVVVV }
   %<<<
 }%<<<
 
